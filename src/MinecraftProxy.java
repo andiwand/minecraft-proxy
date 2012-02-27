@@ -1,9 +1,16 @@
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.Inet4Address;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Map.Entry;
 
 
 public class MinecraftProxy extends Thread {
@@ -33,6 +40,7 @@ public class MinecraftProxy extends Thread {
 	private final NameFactory nameFactory;
 	private final ServerSocket serverSocket;
 	private final InetSocketAddress socketAddress;
+	private final Map<InetAddress, String> nameForAddress;
 	
 	public MinecraftProxy(int port, InetSocketAddress socketAddress)
 			throws IOException {
@@ -49,6 +57,14 @@ public class MinecraftProxy extends Thread {
 		this.nameFactory = nameFactory;
 		this.serverSocket = new ServerSocket(port);
 		this.socketAddress = socketAddress;
+		this.nameForAddress = new HashMap<InetAddress, String>();
+		
+		Properties staticNames = new Properties();
+		staticNames.load(new FileInputStream("static-players.properties"));
+		for (Entry<Object, Object> entry : staticNames.entrySet()) {
+			nameForAddress.put(Inet4Address.getByName((String) entry.getKey()), (String) entry.getValue());
+		}
+		
 		start();
 	}
 	
@@ -57,7 +73,16 @@ public class MinecraftProxy extends Thread {
 		while (true) {
 			try {
 				Socket socket = serverSocket.accept();
-				String name = nameFactory.getName();
+				InetAddress address = socket.getInetAddress();
+				// TODO: plus socket.getPort() for shared public ips?
+				
+				String name;
+				if (nameForAddress.containsKey(address)) {
+					name = nameForAddress.get(address);
+				} else {
+					name = nameFactory.getName();
+				}
+				
 				new Worker(socket, name);
 			} catch (IOException e) {
 				e.printStackTrace();
