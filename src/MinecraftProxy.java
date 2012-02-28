@@ -17,52 +17,55 @@ public class MinecraftProxy extends Thread {
 	
 	private static final int DEFAULT_PORT = 25565;
 	private static final String PLAYER = "Player";
+	private static final String PROPERTIES_FILE = "static-players.properties";
 	
 	private class Worker {
-		public Worker(Socket proxySocket, String name) throws IOException {
-			Socket clientSocket = new Socket(socketAddress.getAddress(),
-					socketAddress.getPort());
+		public Worker(Socket proxyClientSocket, String name) throws IOException {
+			Socket serverClientSocket = new Socket(
+					serverSocketAddress.getAddress(),
+					serverSocketAddress.getPort());
 			
-			InputStream proxyIn = proxySocket.getInputStream();
-			proxyIn = new MinecraftPlayerInputFilterStream(proxyIn, PLAYER,
-					name);
-			OutputStream proxyOut = proxySocket.getOutputStream();
-			InputStream clientIn = clientSocket.getInputStream();
-			clientIn = new MinecraftPlayerInputFilterStream(clientIn, name,
-					PLAYER);
-			OutputStream clientOut = clientSocket.getOutputStream();
+			InputStream proxyClientIn = proxyClientSocket.getInputStream();
+			proxyClientIn = new MinecraftPlayerInputFilterStream(proxyClientIn,
+					PLAYER, name);
+			OutputStream proxyClientOut = proxyClientSocket.getOutputStream();
+			InputStream serverClientIn = serverClientSocket.getInputStream();
+			// serverClientIn = new
+			// MinecraftPlayerInputFilterStream(serverClientIn, name,
+			// PLAYER);
+			OutputStream serverClientOut = serverClientSocket.getOutputStream();
 			
-			new InputStreamPipe(proxyIn, clientOut);
-			new InputStreamPipe(clientIn, proxyOut);
+			new InputStreamPipe(proxyClientIn, serverClientOut);
+			new InputStreamPipe(serverClientIn, proxyClientOut);
 		}
 	}
 	
 	private final NameFactory nameFactory;
-	private final ServerSocket serverSocket;
-	private final InetSocketAddress socketAddress;
-	private final Map<InetAddress, String> nameForAddress;
+	private final ServerSocket proxyServerSocket;
+	private final InetSocketAddress serverSocketAddress;
+	private final Map<InetAddress, String> nameForAddress = new HashMap<InetAddress, String>();
 	
-	public MinecraftProxy(int port, InetSocketAddress socketAddress)
+	public MinecraftProxy(int port, InetSocketAddress serverSocketAddress)
 			throws IOException {
-		this(new CountingNameFactory(), port, socketAddress);
+		this(new CountingNameFactory(), port, serverSocketAddress);
 	}
 	
 	public MinecraftProxy(String username, int port,
-			InetSocketAddress socketAddress) throws IOException {
-		this(new StaticNameFactory(username), port, socketAddress);
+			InetSocketAddress serverSocketAddress) throws IOException {
+		this(new StaticNameFactory(username), port, serverSocketAddress);
 	}
 	
 	public MinecraftProxy(NameFactory nameFactory, int port,
-			InetSocketAddress socketAddress) throws IOException {
+			InetSocketAddress serverSocketAddress) throws IOException {
 		this.nameFactory = nameFactory;
-		this.serverSocket = new ServerSocket(port);
-		this.socketAddress = socketAddress;
-		this.nameForAddress = new HashMap<InetAddress, String>();
+		this.proxyServerSocket = new ServerSocket(port);
+		this.serverSocketAddress = serverSocketAddress;
 		
 		Properties staticNames = new Properties();
-		staticNames.load(new FileInputStream("static-players.properties"));
+		staticNames.load(new FileInputStream(PROPERTIES_FILE));
 		for (Entry<Object, Object> entry : staticNames.entrySet()) {
-			nameForAddress.put(Inet4Address.getByName((String) entry.getKey()), (String) entry.getValue());
+			nameForAddress.put(Inet4Address.getByName((String) entry.getKey()),
+					(String) entry.getValue());
 		}
 		
 		start();
@@ -72,17 +75,11 @@ public class MinecraftProxy extends Thread {
 	public void run() {
 		while (true) {
 			try {
-				Socket socket = serverSocket.accept();
+				Socket socket = proxyServerSocket.accept();
 				InetAddress address = socket.getInetAddress();
-				// TODO: plus socket.getPort() for shared public ips?
 				
-				String name;
-				if (nameForAddress.containsKey(address)) {
-					name = nameForAddress.get(address);
-				} else {
-					name = nameFactory.getName();
-				}
-				
+				String name = (nameForAddress.containsKey(address)) ? nameForAddress.get(address)
+						: nameFactory.getName();
 				new Worker(socket, name);
 			} catch (IOException e) {
 				e.printStackTrace();
