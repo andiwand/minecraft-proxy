@@ -77,9 +77,13 @@ public class MinecraftProxy extends Thread {
 			try {
 				Socket socket = proxyServerSocket.accept();
 				InetAddress address = socket.getInetAddress();
+				String name = nameForAddress.get(address);
 				
-				String name = (nameForAddress.containsKey(address)) ? nameForAddress.get(address)
-						: nameFactory.getName();
+				if (name == null) {
+					name = nameFactory.getName();
+					nameForAddress.put(address, name);
+				}
+				
 				new Worker(socket, name);
 			} catch (IOException e) {
 				e.printStackTrace();
