@@ -17,8 +17,6 @@ public class InputStreamPipe {
 					bytes[0] = (byte) read;
 					in.read(bytes, 1, bytes.length - 1);
 					
-					System.err.println(new String(bytes).replaceAll("\0", "."));
-					
 					out.write(bytes);
 					out.flush();
 				}

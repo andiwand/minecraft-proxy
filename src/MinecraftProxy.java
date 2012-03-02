@@ -31,8 +31,7 @@ public class MinecraftProxy extends Thread {
 			InputStream serverClientIn = serverClientSocket.getInputStream();
 			OutputStream serverClientOut = serverClientSocket.getOutputStream();
 			
-			new InputStreamPipe(new TeeInputStream(proxyClientIn,
-					new FilterZeroOutputStream(System.out)), serverClientOut);
+			new InputStreamPipe(proxyClientIn, serverClientOut);
 			new InputStreamPipe(serverClientIn, proxyClientOut);
 		}
 	}
