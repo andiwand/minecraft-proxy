@@ -1,38 +1,35 @@
-import java.io.FileInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Map.Entry;
 
 
 public class MinecraftProxy extends Thread {
 	
 	private static final int DEFAULT_PORT = 25565;
 	private static final String PLAYER = "Player";
-	private static final String PROPERTIES_FILE = "static-players.properties";
+	private static final File PROPERTIES_FILE = new File(
+			"static-players.properties");
 	
 	private class Worker {
-		public Worker(Socket proxyClientSocket, String name) throws IOException {
+		public Worker(Socket proxyClientSocket) throws IOException {
+			InetAddress proxyClientAddress = proxyClientSocket.getInetAddress();
 			Socket serverClientSocket = new Socket(
 					serverSocketAddress.getAddress(),
 					serverSocketAddress.getPort());
 			
 			InputStream proxyClientIn = proxyClientSocket.getInputStream();
-			proxyClientIn = new MinecraftPlayerInputFilterStream(proxyClientIn,
-					PLAYER, name);
+			proxyClientIn = new MinecraftFirstMessageFilter(proxyClientIn,
+					PLAYER, nameFactory, proxyClientAddress,
+					serverSocketAddress);
+			proxyClientIn = new MinecraftPlayerNameFilter(proxyClientIn,
+					PLAYER, (MinecraftFirstMessageFilter) proxyClientIn);
 			OutputStream proxyClientOut = proxyClientSocket.getOutputStream();
 			InputStream serverClientIn = serverClientSocket.getInputStream();
-			// serverClientIn = new
-			// MinecraftPlayerInputFilterStream(serverClientIn, name,
-			// PLAYER);
 			OutputStream serverClientOut = serverClientSocket.getOutputStream();
 			
 			new InputStreamPipe(proxyClientIn, serverClientOut);
@@ -43,30 +40,12 @@ public class MinecraftProxy extends Thread {
 	private final NameFactory nameFactory;
 	private final ServerSocket proxyServerSocket;
 	private final InetSocketAddress serverSocketAddress;
-	private final Map<InetAddress, String> nameForAddress = new HashMap<InetAddress, String>();
-	
-	public MinecraftProxy(int port, InetSocketAddress serverSocketAddress)
-			throws IOException {
-		this(new CountingNameFactory(), port, serverSocketAddress);
-	}
-	
-	public MinecraftProxy(String username, int port,
-			InetSocketAddress serverSocketAddress) throws IOException {
-		this(new StaticNameFactory(username), port, serverSocketAddress);
-	}
 	
 	public MinecraftProxy(NameFactory nameFactory, int port,
 			InetSocketAddress serverSocketAddress) throws IOException {
 		this.nameFactory = nameFactory;
 		this.proxyServerSocket = new ServerSocket(port);
 		this.serverSocketAddress = serverSocketAddress;
-		
-		Properties staticNames = new Properties();
-		staticNames.load(new FileInputStream(PROPERTIES_FILE));
-		for (Entry<Object, Object> entry : staticNames.entrySet()) {
-			nameForAddress.put(Inet4Address.getByName((String) entry.getKey()),
-					(String) entry.getValue());
-		}
 		
 		start();
 	}
@@ -76,15 +55,7 @@ public class MinecraftProxy extends Thread {
 		while (true) {
 			try {
 				Socket socket = proxyServerSocket.accept();
-				InetAddress address = socket.getInetAddress();
-				String name = nameForAddress.get(address);
-				
-				if (name == null) {
-					name = nameFactory.getName();
-					nameForAddress.put(address, name);
-				}
-				
-				new Worker(socket, name);
+				new Worker(socket);
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -110,8 +81,22 @@ public class MinecraftProxy extends Thread {
 			return;
 		}
 		
-		if (args.length > 2) new MinecraftProxy(args[2], port, socketAddress);
-		else new MinecraftProxy(port, socketAddress);
+		NameFactory nameFactory;
+		
+		if (args.length > 2) {
+			nameFactory = new StaticNameFactory(args[2]);
+		} else {
+			NameFactory subNameFactory = new IncrementingNameFactory();
+			
+			if (PROPERTIES_FILE.exists()) {
+				nameFactory = new CachedNameFactory(subNameFactory,
+						PROPERTIES_FILE);
+			} else {
+				nameFactory = new CachedNameFactory(subNameFactory);
+			}
+		}
+		
+		new MinecraftProxy(nameFactory, port, socketAddress);
 		
 		System.out.println("proxy server started...");
 	}

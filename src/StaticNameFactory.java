@@ -1,3 +1,5 @@
+import java.net.InetAddress;
+
 public class StaticNameFactory implements NameFactory {
 	
 	private final String name;
@@ -6,7 +8,7 @@ public class StaticNameFactory implements NameFactory {
 		this.name = name;
 	}
 	
-	public String getName() {
+	public String getName(InetAddress address) {
 		return name;
 	}
 	
