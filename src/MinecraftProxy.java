@@ -72,7 +72,7 @@ public class MinecraftProxy extends Thread {
 					socketAddressString[0],
 					(socketAddressString.length > 1) ? Integer.parseInt(socketAddressString[1])
 							: Minecraft.PORT);
-			port = (args.length > 1) ? Integer.parseInt(args[1]) : 25566;
+			port = (args.length > 1) ? Integer.parseInt(args[1]) : Minecraft.PORT;
 		} catch (Exception e) {
 			e.printStackTrace();
 			System.err.println();

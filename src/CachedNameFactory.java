@@ -1,6 +1,7 @@
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.util.HashMap;
@@ -29,8 +30,10 @@ public class CachedNameFactory implements NameFactory {
 			throws IOException {
 		this(factory);
 		
+		InputStream inputStream = new FileInputStream(nameCacheFile);
 		Properties staticNames = new Properties();
-		staticNames.load(new FileInputStream(nameCacheFile));
+		staticNames.load(inputStream);
+		inputStream.close();
 		
 		for (Entry<Object, Object> entry : staticNames.entrySet()) {
 			nameCache.put(Inet4Address.getByName((String) entry.getKey()),
