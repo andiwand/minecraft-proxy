@@ -1,7 +1,11 @@
 import java.io.UnsupportedEncodingException;
 
 
-public class MinecraftUtil {
+public class Minecraft {
+	
+	public static final int PORT = 25565;
+	
+	public static final String PLAYER = "Player";
 	
 	public static final String CHARSET = "utf-16be";
 	

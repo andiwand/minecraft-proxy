@@ -7,7 +7,7 @@ import java.util.LinkedList;
 
 public class MinecraftPlayerNameFilter extends FilterInputStream {
 	
-	private static final int TIMEOUT = 500;
+	private static final int TIMEOUT = 100;
 	
 	private final TimeoutInputStream timeoutIn;
 	
@@ -21,7 +21,7 @@ public class MinecraftPlayerNameFilter extends FilterInputStream {
 		super(in);
 		
 		this.timeoutIn = new TimeoutInputStream(in, TIMEOUT);
-		this.source = MinecraftUtil.toMinecraftString(source);
+		this.source = Minecraft.toMinecraftString(source);
 		this.firstMessageFilter = firstMessageFilter;
 	}
 	
@@ -34,24 +34,26 @@ public class MinecraftPlayerNameFilter extends FilterInputStream {
 	public int read() throws IOException {
 		if (!queue.isEmpty()) return queue.remove();
 		
-		int read = timeoutIn.readUnblocked();
+		int read = timeoutIn.readBlocked();
 		queue.add(read);
 		
 		for (int i = 0; (read == source[i]) && (i < source.length); i++) {
 			if (i == (source.length - 1)) {
+				if (destination == null) {
+					destination = Minecraft.toMinecraftString(firstMessageFilter.getName());
+				}
+				
 				queue.clear();
-				if (destination == null) destination = MinecraftUtil.toMinecraftString(firstMessageFilter.getName());
 				queueAll(destination);
 				break;
 			}
 			
 			try {
 				read = timeoutIn.read();
+				queue.add(read);
 			} catch (TimeoutException e) {
 				break;
 			}
-			
-			queue.add(read);
 		}
 		
 		return queue.remove();
@@ -75,7 +77,7 @@ public class MinecraftPlayerNameFilter extends FilterInputStream {
 	
 	@Override
 	public int available() throws IOException {
-		return queue.size() + in.available();
+		return queue.size();
 	}
 	
 }

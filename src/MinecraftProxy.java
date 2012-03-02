@@ -10,10 +10,8 @@ import java.net.Socket;
 
 public class MinecraftProxy extends Thread {
 	
-	private static final int DEFAULT_PORT = 25565;
-	private static final String PLAYER = "Player";
 	private static final File PROPERTIES_FILE = new File(
-			"static-players.properties");
+			"/home/andreas/ciscomine/static-players.properties");
 	
 	private class Worker {
 		public Worker(Socket proxyClientSocket) throws IOException {
@@ -24,15 +22,17 @@ public class MinecraftProxy extends Thread {
 			
 			InputStream proxyClientIn = proxyClientSocket.getInputStream();
 			proxyClientIn = new MinecraftFirstMessageFilter(proxyClientIn,
-					PLAYER, nameFactory, proxyClientAddress,
+					Minecraft.PLAYER, nameFactory, proxyClientAddress,
 					serverSocketAddress);
 			proxyClientIn = new MinecraftPlayerNameFilter(proxyClientIn,
-					PLAYER, (MinecraftFirstMessageFilter) proxyClientIn);
+					Minecraft.PLAYER,
+					(MinecraftFirstMessageFilter) proxyClientIn);
 			OutputStream proxyClientOut = proxyClientSocket.getOutputStream();
 			InputStream serverClientIn = serverClientSocket.getInputStream();
 			OutputStream serverClientOut = serverClientSocket.getOutputStream();
 			
-			new InputStreamPipe(proxyClientIn, serverClientOut);
+			new InputStreamPipe(new TeeInputStream(proxyClientIn,
+					new FilterZeroOutputStream(System.out)), serverClientOut);
 			new InputStreamPipe(serverClientIn, proxyClientOut);
 		}
 	}
@@ -71,8 +71,8 @@ public class MinecraftProxy extends Thread {
 			socketAddress = new InetSocketAddress(
 					socketAddressString[0],
 					(socketAddressString.length > 1) ? Integer.parseInt(socketAddressString[1])
-							: 25565);
-			port = (args.length > 1) ? Integer.parseInt(args[1]) : DEFAULT_PORT;
+							: Minecraft.PORT);
+			port = (args.length > 1) ? Integer.parseInt(args[1]) : 25566;
 		} catch (Exception e) {
 			e.printStackTrace();
 			System.err.println();

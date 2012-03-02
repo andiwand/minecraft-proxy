@@ -67,14 +67,14 @@ public class MinecraftFirstMessageFilter extends FilterInputStream {
 		byte[] buffer = new byte[size << 1];
 		in.read(buffer);
 		
-		String message = new String(buffer, MinecraftUtil.CHARSET);
+		String message = new String(buffer, Minecraft.CHARSET);
 		String name = message.split(";")[0];
 		if (name.equals(source)) name = nameFactory.getName(clientAddress);
 		this.name = name;
 		String newMessage = name + ";" + serverDestination + ":" + serverPort;
 		
 		queue.add(0x02);
-		queueAll(MinecraftUtil.toMinecraftString(newMessage));
+		queueAll(Minecraft.toMinecraftString(newMessage));
 		
 		return queue.remove();
 	}
@@ -97,7 +97,7 @@ public class MinecraftFirstMessageFilter extends FilterInputStream {
 	
 	@Override
 	public int available() throws IOException {
-		return ((queue != null) ? queue.size() : 0) + in.available();
+		return (queue != null) ? queue.size() : in.available();
 	}
 	
 }

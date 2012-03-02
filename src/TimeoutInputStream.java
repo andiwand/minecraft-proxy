@@ -61,7 +61,7 @@ public class TimeoutInputStream extends FilterInputStream {
 		return read;
 	}
 	
-	public int readUnblocked() throws IOException {
+	public int readBlocked() throws IOException {
 		return read(0);
 	}
 	
